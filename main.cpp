@@ -59,7 +59,8 @@ void keybord(WebSocket::pointer ws)
         }
 
         if (help_key.find(keyword) != help_key.end()) {
-            console.print("\nHelp ws-clinet v0.1", { console.invert });
+            console.print("\nHelp ws-client v0.1", { console.invert });
+            console.log("More info: https://github.com/memoryInject/ws-client");
         }
     }
 }
