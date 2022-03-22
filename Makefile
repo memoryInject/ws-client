@@ -1,4 +1,5 @@
 CC=g++
+#OPT=-O1
 OPT=-O3
 CXXFLAGS=-Wall
 LIBS=-lpthread

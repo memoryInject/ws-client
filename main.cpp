@@ -12,12 +12,15 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
+#include <chrono>
 
 using namespace std;
+using namespace std::chrono_literals;
 using easywsclient::WebSocket;
 using json = nlohmann::json;
 
-atomic<bool> run_loop(true);
+atomic<bool> run_loop(true); // Run thread loops
+atomic<bool> close_ws(false); // control websocket
 mutex guard; // to protect ws
 
 // For console exit keywords
@@ -26,36 +29,71 @@ unordered_set<string> exit_key({ "q", "quit", "exit" });
 // For help keywords
 unordered_set<string> help_key({ "h", "help" });
 
-void websocket(WebSocket::pointer ws)
+// For reconnect ws
+unordered_set<string> reconnect_key({ "r", "reset", "reconnect", "restart" });
+
+
+void websocket(string uri)
 {
-    while (ws->getReadyState() != WebSocket::CLOSED) {
-        ws->poll();
-        ws->dispatch([ws](string message) {
-            // Check if the message in JSON
-            try {
-                json j_complete = json::parse(message);
-                console.info("\n>>> JSON Data:");
-                cout << setw(4) << j_complete << endl;
-            } catch (const exception& e) {
-                cout
-                    << console.get("\n>>> ", { console.light_blue })
-                    << message << endl;
+    while(run_loop) {
+        WebSocket::pointer ws = WebSocket::from_url(uri);
+
+        if (ws == NULL) {
+            //console.error("WebSocket not connected: " + uri);
+            console.info("Trying to reconnect in 5 sec..");
+            this_thread::sleep_for(5000ms);
+            //console.log("Reconnect: " + uri);
+            continue;
+        }
+
+        assert(ws);
+
+        console.print("Connected: " + uri, { console.invert });
+        //ws->send("goodbye");
+        //ws->send("hello");
+        while (ws->getReadyState() != WebSocket::CLOSED) {
+            ws->poll();
+            ws->dispatch([ws](string message) {
+                // Check if the message in JSON
+                try {
+                    json j_complete = json::parse(message);
+                    console.info("\n>>> JSON Data:");
+                    cout << setw(4) << j_complete << endl;
+                } catch (const exception& e) {
+                    cout
+                        << console.get("\n>>> ", { console.light_blue })
+                        << message << endl;
+                }
+            });
+
+            if (close_ws == true) {
+                ws->close();
             }
-        });
+        }
+        close_ws = false;
+        delete ws;
+        //run_loop = false;
     }
 }
 
-void keybord(WebSocket::pointer ws)
+void keybord()
 {
     while (run_loop) {
         string keyword;
         cin >> keyword;
         if (exit_key.find(keyword) != exit_key.end()) {
-            {
-                const lock_guard<mutex> lock(guard);
-                ws->close();
-            }
+            //{
+                //const lock_guard<mutex> lock(guard);
+                //ws->close();
+            //}
+            console.debug("Exit");
+            close_ws = true;
             run_loop = false;
+        }
+
+        if (reconnect_key.find(keyword) != exit_key.end()) {
+            console.debug("Reset connection");
+            close_ws = true;
         }
 
         if (help_key.find(keyword) != help_key.end()) {
@@ -70,29 +108,22 @@ int main(int argc, char* argv[])
     string uri;
     if (argc > 1) {
         uri = argv[1];
-        cout << uri << endl;
     } else {
         uri = "ws://local";
     }
 
-    WebSocket::pointer ws = WebSocket::from_url(uri);
-    assert(ws);
-    console.print("Connected: " + uri, { console.invert });
-    ws->send("goodbye");
-    ws->send("hello");
 
-    thread keyListener(keybord, ws);
-    thread wsListener(websocket, ws);
+    thread keyListener(keybord);
+    thread wsListener(websocket, uri);
 
     keyListener.join();
     wsListener.join();
 
-    if (ws->getReadyState() == WebSocket::CLOSED) {
+    if (close_ws) {
         string msg = "Web Socket Closed: " + uri;
         console.warn(msg);
     }
 
-    delete ws;
 
     return 0;
 }
