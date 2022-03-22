@@ -10,18 +10,18 @@
 #include <unordered_set>
 
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <thread>
-#include <chrono>
 
 using namespace std;
 using namespace std::chrono_literals;
 using easywsclient::WebSocket;
 using json = nlohmann::json;
 
-atomic<bool> run_loop(true); // Run thread loops
+atomic<bool> run_loop(true);  // Run thread loops
 atomic<bool> close_ws(false); // control websocket
-mutex guard; // to protect ws
+mutex guard;                  // to protect ws
 
 // For console exit keywords
 unordered_set<string> exit_key({ "q", "quit", "exit" });
@@ -32,16 +32,44 @@ unordered_set<string> help_key({ "h", "help" });
 // For reconnect ws
 unordered_set<string> reconnect_key({ "r", "reset", "reconnect", "restart" });
 
-
 void websocket(string uri)
 {
-    while(run_loop) {
+    while (run_loop) {
         WebSocket::pointer ws = WebSocket::from_url(uri);
 
         if (ws == NULL) {
             //console.error("WebSocket not connected: " + uri);
-            console.info("Trying to reconnect in 5 sec..");
-            this_thread::sleep_for(5000ms);
+            //console.info("Trying to reconnect in 5 sec..");
+
+            // Animation in console
+            // more info: https://stackoverflow.com/questions/8486181/how-to-make-a-loading-animation-in-console-application-written-in-c
+            cout << console.get(
+                    "Trying to reconnect in:", 
+                    { console.light_magenta, console.underline }) << "  ";
+            int wait_for = 5;
+            for (int i=0; i<wait_for; i++) {
+                if (close_ws){
+                    break;
+                }
+
+                cout << "\b\b" + to_string(wait_for - i) + "s" << flush;
+                this_thread::sleep_for(1000ms);
+            }
+            if (close_ws == false){
+                cout << "\b\b0s" <<  endl;
+            }
+
+            //cout << "\b\b5s" << flush;
+            //this_thread::sleep_for(1000ms);
+            //cout << "\b\b4s" << flush;
+            //this_thread::sleep_for(1000ms);
+            //cout << "\b\b3s" << flush;
+            //this_thread::sleep_for(1000ms);
+            //cout << "\b\b2s" << flush;
+            //this_thread::sleep_for(1000ms);
+            //cout << "\b\b1s" << flush;
+            //this_thread::sleep_for(1000ms);
+            //cout << "\b\b0s" << endl;
             //console.log("Reconnect: " + uri);
             continue;
         }
@@ -83,8 +111,8 @@ void keybord()
         cin >> keyword;
         if (exit_key.find(keyword) != exit_key.end()) {
             //{
-                //const lock_guard<mutex> lock(guard);
-                //ws->close();
+            //const lock_guard<mutex> lock(guard);
+            //ws->close();
             //}
             console.debug("Exit");
             close_ws = true;
@@ -112,7 +140,6 @@ int main(int argc, char* argv[])
         uri = "ws://local";
     }
 
-
     thread keyListener(keybord);
     thread wsListener(websocket, uri);
 
@@ -123,7 +150,6 @@ int main(int argc, char* argv[])
         string msg = "Web Socket Closed: " + uri;
         console.warn(msg);
     }
-
 
     return 0;
 }
