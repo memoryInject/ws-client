@@ -19,9 +19,10 @@ using namespace std::chrono_literals;
 using easywsclient::WebSocket;
 using json = nlohmann::json;
 
-atomic<bool> run_loop(true);  // Run thread loops
-atomic<bool> close_ws(false); // control websocket
-atomic<bool> send_ws(false);  // send message to WebSocket
+atomic<bool> run_loop(true);      // Run thread loops
+atomic<bool> close_ws(false);     // control websocket
+atomic<bool> send_ws(false);      // send message to WebSocket
+atomic<bool> reconnect_ws(false); // To check if ws try to reconnect
 
 // For console exit keywords
 unordered_set<string> exit_key({ "q", "quit", "exit" });
@@ -75,12 +76,14 @@ void websocket(string uri)
         WebSocket::pointer ws = WebSocket::from_url(uri);
 
         if (ws == NULL) {
+            reconnect_ws = true;
             // Animation in console
             // more info: https://stackoverflow.com/questions/8486181/how-to-make-a-loading-animation-in-console-application-written-in-c
             cout << console.get(
                 "Trying to reconnect in:",
                 { console.light_magenta, console.underline })
-                 << "  " << " ";
+                 << "  "
+                 << " ";
             int wait_for = 5;
             for (int i = 0; i < wait_for; i++) {
                 if (close_ws) {
@@ -102,6 +105,7 @@ void websocket(string uri)
         console.print("Connected: " + uri, { console.invert });
 
         while (ws->getReadyState() != WebSocket::CLOSED) {
+            reconnect_ws = false;
             ws->poll();
             ws->dispatch([ws](string message) {
                 print_message(message, false);
@@ -116,6 +120,7 @@ void websocket(string uri)
 
             if (close_ws) {
                 ws->close();
+                console.warn("WebSocket closed: " + uri);
                 close_ws = false;
             }
         }
@@ -135,8 +140,12 @@ void keybord()
         }
 
         if (reconnect_key.find(keyword) != reconnect_key.end()) {
-            console.debug("Reset connection");
-            close_ws = true;
+            if (reconnect_ws) {
+                console.warn("Can not reset connection while reconnect!");
+            } else {
+                console.debug("Reset connection");
+                close_ws = true;
+            }
         }
 
         if (message_key.find(keyword) != message_key.end()) {
@@ -192,9 +201,6 @@ int main(int argc, char* argv[])
 
     keyListener.join();
     wsListener.join();
-
-    string msg = "Web Socket Closed: " + uri;
-    console.warn(msg);
 
     return 0;
 }
