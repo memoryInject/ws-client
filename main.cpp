@@ -54,7 +54,7 @@ void print_message(string message, bool send)
         cout << setw(4) << j_complete << endl;
     } catch (const exception& e) {
         cout
-            << console.get(icon , { console.light_blue })
+            << console.get(icon, { console.light_blue })
             << message << endl;
     }
 }
