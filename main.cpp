@@ -120,9 +120,11 @@ void websocket(string uri)
 
             if (close_ws) {
                 ws->close();
-                console.warn("WebSocket closed: " + uri);
+                console.warn("Connection closed: " + uri);
                 close_ws = false;
             }
+            // Sleep for 20ms, it help cpu high usage.
+            this_thread::sleep_for(20ms);
         }
         delete ws;
     }
