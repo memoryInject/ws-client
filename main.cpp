@@ -39,6 +39,25 @@ unordered_set<string> message_key({ "res", "send", "response" });
 // Message for send
 string send_msg;
 
+void print_message(string message, bool send)
+{
+    string icon = "\n>>> ";
+    if (send) {
+        icon = "\n<<< ";
+    }
+
+    // Check if the message in JSON
+    try {
+        json j_complete = json::parse(message);
+        console.info(icon + "JSON Data:");
+        cout << setw(4) << j_complete << endl;
+    } catch (const exception& e) {
+        cout
+            << console.get(icon , { console.light_blue })
+            << message << endl;
+    }
+}
+
 void websocket(string uri)
 {
     while (run_loop) {
@@ -75,19 +94,12 @@ void websocket(string uri)
         while (ws->getReadyState() != WebSocket::CLOSED) {
             ws->poll();
             ws->dispatch([ws](string message) {
-                // Check if the message in JSON
-                try {
-                    json j_complete = json::parse(message);
-                    console.info("\n>>> JSON Data:");
-                    cout << setw(4) << j_complete << endl;
-                } catch (const exception& e) {
-                    cout
-                        << console.get("\n>>> ", { console.light_blue })
-                        << message << endl;
-                }
+                print_message(message, false);
             });
 
             if (send_ws) {
+                print_message(send_msg, true);
+
                 ws->send(send_msg);
                 send_ws = false;
             }
@@ -134,16 +146,6 @@ void keybord()
                     send_msg.push_back(c);
                 }
                 send_ws = true;
-                // Check if the message in JSON
-                try {
-                    json j_complete = json::parse(send_msg);
-                    console.info("\n<<< JSON Data:");
-                    cout << setw(4) << j_complete << endl;
-                } catch (const exception& e) {
-                    cout
-                        << console.get("\n<<< ", { console.light_blue })
-                        << send_msg << endl;
-                }
             } else {
                 console.warn("WebSocket is busy...");
             }
