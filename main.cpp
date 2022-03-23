@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <iomanip>
 #include <iostream>
+#include <regex>
 #include <stdio.h>
 #include <string>
 #include <unordered_map>
@@ -11,7 +12,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <mutex>
 #include <thread>
 
 using namespace std;
@@ -22,7 +22,6 @@ using json = nlohmann::json;
 atomic<bool> run_loop(true);  // Run thread loops
 atomic<bool> close_ws(false); // control websocket
 atomic<bool> send_ws(false);  // send message to WebSocket
-mutex guard;                  // to protect ws
 
 // For console exit keywords
 unordered_set<string> exit_key({ "q", "quit", "exit" });
@@ -38,6 +37,17 @@ unordered_set<string> message_key({ "res", "send", "response" });
 
 // Message for send
 string send_msg;
+
+// Check if the given uri is valid WebSocket address
+bool check_uri(string uri)
+{
+    auto regex_ws = regex(R"(^(wss?:)(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)");
+    if (regex_match(uri, regex_ws)) {
+        return true;
+    }
+
+    return false;
+}
 
 // Pretty print format for JSON and plain string
 void print_message(string message, bool send)
@@ -70,7 +80,7 @@ void websocket(string uri)
             cout << console.get(
                 "Trying to reconnect in:",
                 { console.light_magenta, console.underline })
-                 << "  ";
+                 << "  " << " ";
             int wait_for = 5;
             for (int i = 0; i < wait_for; i++) {
                 if (close_ws) {
@@ -90,8 +100,7 @@ void websocket(string uri)
         assert(ws);
 
         console.print("Connected: " + uri, { console.invert });
-        //ws->send("goodbye");
-        //ws->send("hello");
+
         while (ws->getReadyState() != WebSocket::CLOSED) {
             ws->poll();
             ws->dispatch([ws](string message) {
@@ -111,7 +120,6 @@ void websocket(string uri)
             }
         }
         delete ws;
-        //run_loop = false;
     }
 }
 
@@ -164,8 +172,19 @@ int main(int argc, char* argv[])
     string uri;
     if (argc > 1) {
         uri = argv[1];
+        auto valid_uri = check_uri(uri);
+        if (!valid_uri) {
+            console.error("ERROR: Invalid URL!");
+            return 1;
+        }
+
+        if (uri.find("wss") == 0) {
+            console.error("ERROR: Currently no support for wss!");
+            return 1;
+        }
     } else {
-        uri = "ws://local";
+        console.error("ERROR: Must pass WebSocket URL as first arg!");
+        return 1;
     }
 
     thread keyListener(keybord);
