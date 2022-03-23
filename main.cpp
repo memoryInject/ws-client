@@ -21,6 +21,7 @@ using json = nlohmann::json;
 
 atomic<bool> run_loop(true);  // Run thread loops
 atomic<bool> close_ws(false); // control websocket
+atomic<bool> send_ws(false); // send message to WebSocket
 mutex guard;                  // to protect ws
 
 // For console exit keywords
@@ -31,6 +32,13 @@ unordered_set<string> help_key({ "h", "help" });
 
 // For reconnect ws
 unordered_set<string> reconnect_key({ "r", "reset", "reconnect", "restart" });
+
+// For sending messages
+unordered_set<string> message_key({ "res", "send", "response" });
+
+
+// Write message to
+string message;
 
 void websocket(string uri)
 {
@@ -94,6 +102,12 @@ void websocket(string uri)
                 }
             });
 
+            if (send_ws) {
+                ws->send(message);
+                send_ws = false;
+            }
+
+
             if (close_ws == true) {
                 ws->close();
             }
@@ -119,9 +133,19 @@ void keybord()
             run_loop = false;
         }
 
-        if (reconnect_key.find(keyword) != exit_key.end()) {
+        if (reconnect_key.find(keyword) != reconnect_key.end()) {
             console.debug("Reset connection");
             close_ws = true;
+        }
+
+        if (message_key.find(keyword) != message_key.end()) {
+            if (!send_ws) {
+                cout << "Message: ";
+                cin >> message;
+                send_ws = true;
+            } else {
+                console.warn("WebSocket is busy...");
+            }
         }
 
         if (help_key.find(keyword) != help_key.end()) {
@@ -146,10 +170,8 @@ int main(int argc, char* argv[])
     keyListener.join();
     wsListener.join();
 
-    if (close_ws) {
-        string msg = "Web Socket Closed: " + uri;
-        console.warn(msg);
-    }
+    string msg = "Web Socket Closed: " + uri;
+    console.warn(msg);
 
     return 0;
 }
