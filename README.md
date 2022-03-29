@@ -11,20 +11,22 @@ Console color and formatting using https://github.com/memoryInject/color-console
 
 ![App Screenshot](https://res.cloudinary.com/memoryinject/image/upload/h_458,c_scale/v1648024478/ws-client-01_lldds8.png)
 
-![App Screenshot](https://res.cloudinary.com/memoryinject/image/upload/h_258,c_scale/v1648024485/ws-client-02_sl3b32.png)
+![App Screenshot](https://res.cloudinary.com/memoryinject/image/upload/h_458,c_scale/v1648024485/ws-client-02_sl3b32.png)
 
 
 
 ## Features
-
-- JSON formatted output to console.
-- Auto reconnect, wait for 5 seconds.
-- Keywords for manual reconnect (`r`, `reset`, `reconnect`, `restart`).
-- Keywords for exit/closing connection (`q`, `quit`, `exit`).
-- Keywords for help (`h`, `help`).
 - Light weight 🍂
 - Blazing fast ⚡
 - Portable 💼
+- JSON formatted output to console.
+- JSON support for sending message.
+- Auto reconnect, wait for 5 seconds.
+- Keywords for manual reconnect (`r`, `reset`, `reconnect`, `restart`).
+- Keywords for exit/closing connection (`q`, `quit`, `exit`).
+- Keywords for send message to server (`res`, `send`, `response`).
+- Keywords for help (`h`, `help`).
+
 
 ## Build
 
@@ -79,10 +81,65 @@ Connected: ws://localhost:8000/ws
 }
 q
 Exit
+Connection closed: ws://localhost:8126/ws
 ~
 ❯ 
 ```
+   
+To restart the program type `r` and `enter`
+```bash
+~                                                                                  
+❯ ws 'ws://localhost:8126/ws'
+Connected: ws://localhost:8126/ws
 
+>>> JSON Data:
+{
+    "message": "connected"
+}
+
+r
+Reset connection
+Connection closed: ws://localhost:8126/ws
+Connected: ws://localhost:8126/ws
+
+>>> JSON Data:
+{
+    "message": "connected"
+}
+```
+
+To send message to server type `res` and `enter` then type message as `string` or `json` then `enter` to send.
+```bash
+~                                                                                     
+❯ ws 'ws://localhost:8126/ws'
+Connected: ws://localhost:8126/ws
+
+>>> JSON Data:
+{
+    "message": "connected"
+}
+
+>>> JSON Data:
+{
+    "message": "hello from server",
+    "type": "notification"
+}
+res
+Message: hello
+
+<<< hello
+
+>>> world
+res
+Message: { "msg": "world", "type": "info" }
+
+<<< JSON Data:
+{
+    "msg": "world",
+    "type": "info"
+}
+
+```
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
